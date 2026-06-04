@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC英単語 4択テスト</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .quiz-container {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .progress {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .word {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .btn {
+            background-color: #fff;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-weight: 500;
+        }
+        .btn:hover:not(:disabled) {
+            background-color: #edf2f7;
+            border-color: #cbd5e0;
+        }
+        .btn:disabled {
+            cursor: not-allowed;
+        }
+        /* 正解・不正解のスタイル */
+        .btn.correct {
+            background-color: #c6f6d5;
+            border-color: #48bb78;
+            color: #22543d;
+        }
+        .btn.wrong {
+            background-color: #fed7d7;
+            border-color: #f56565;
+            color: #742a2a;
+        }
+        .feedback {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            min-height: 28px;
+        }
+        .next-btn {
+            margin-top: 20px;
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+            width: 100%;
+        }
+        .next-btn:hover {
+            background-color: #2b6cb0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container">
+    <div id="quiz-screen">
+        <div class="progress" id="progress">Question 1/10</div>
+        <div class="word" id="question-word">Loading...</div>
+        <div class="options-grid" id="options-container"></div>
+        <div class="feedback" id="feedback"></div>
+        <button class="next-btn" id="next-button" onclick="nextQuestion()">次の問題へ</button>
+    </div>
+    <div id="result-screen" style="display: none;">
+        <h2>テスト終了！</h2>
+        <div class="word" id="score">0 / 0</div>
+        <button class="next-btn" style="display: block;" onclick="startQuiz()">最初から解き直す</button>
+    </div>
+</div>
+
+<script>
+// 先ほど抽出した全112単語のマスターデータ
+const wordMaster = [
+  // Day 1
+  { word: "bill", meaning: "請求書、紙幣", day: 1 },
+  { word: "profit", meaning: "利益", day: 1 },
+  { word: "benefit", meaning: "給付金", day: 1 },
+  { word: "contract", meaning: "契約", day: 1 },
+  { word: "degree", meaning: "学位", day: 1 },
+  { word: "expense", meaning: "費用", day: 1 },
+  { word: "figure", meaning: "数字", day: 1 },
+  { word: "property", meaning: "財産", day: 1 },
+  { word: "demand", meaning: "需要", day: 1 },
+  { word: "interview", meaning: "面接", day: 1 },
+  { word: "notice", meaning: "通知", day: 1 },
+  { word: "statement", meaning: "報告書、明細書", day: 1 },
+  { word: "appointment", meaning: "約束", day: 1 },
+  { word: "insurance", meaning: "保険", day: 1 },
+  { word: "luggage", meaning: "手荷物", day: 1 },
+  { word: "opportunity", meaning: "機会", day: 1 },
+  // Day 2
+  { word: "tip", meaning: "助言", day: 2 },
+  { word: "equipment", meaning: "装置", day: 2 },
+  { word: "issue", meaning: "問題", day: 2 },
+  { word: "department", meaning: "部", day: 2 },
+  { word: "instrument", meaning: "楽器", day: 2 },
+  { word: "balance", meaning: "残高", day: 2 },
+  { word: "income", meaning: "収入", day: 2 },
+  { word: "supply", meaning: "備品", day: 2 },
+  { word: "rate", meaning: "率", day: 2 },
+  { word: "fare", meaning: "運賃", day: 2 },
+  { word: "complaint", meaning: "不満", day: 2 },
+  { word: "honor", meaning: "光栄", day: 2 },
+  { word: "vehicle", meaning: "乗り物", day: 2 },
+  { word: "instruction", meaning: "説明書", day: 2 },
+  { word: "minute", meaning: "議事録", day: 2 },
+  { word: "position", meaning: "職", day: 2 },
+  // Day 3
+  { word: "produce", meaning: "農産物", day: 3 },
+  { word: "range", meaning: "範囲", day: 3 },
+  { word: "regulation", meaning: "規則", day: 3 },
+  { word: "author", meaning: "著者", day: 3 },
+  { word: "railing", meaning: "手すり", day: 3 },
+  { word: "fund", meaning: "資金", day: 3 },
+  { word: "quality", meaning: "品質", day: 3 },
+  { word: "agency", meaning: "代理店", day: 3 },
+  { word: "committee", meaning: "委員会", day: 3 },
+  { word: "function", meaning: "機能", day: 3 },
+  { word: "authority", meaning: "権威", day: 3 },
+  { word: "passenger", meaning: "乗客", day: 3 },
+  { word: "proposal", meaning: "提案", day: 3 },
+  { word: "drawer", meaning: "引き出し", day: 3 },
+  { word: "application", meaning: "申し込み", day: 3 },
+  { word: "branch", meaning: "支店", day: 3 },
+  // Day 4
+  { word: "customer", meaning: "顧客", day: 4 },
+  { word: "firm", meaning: "会社", day: 4 },
+  { word: "fuel", meaning: "燃料", day: 4 },
+  { word: "quarter", meaning: "四半期", day: 4 },
+  { word: "clerk", meaning: "事務員", day: 4 },
+  { word: "policy", meaning: "保険契約", day: 4 },
+  { word: "rent", meaning: "賃貸料", day: 4 },
+  { word: "tour", meaning: "視察", day: 4 },
+  { word: "analysis", meaning: "分析", day: 4 },
+  { word: "crop", meaning: "農作物", day: 4 },
+  { word: "description", meaning: "描写", day: 4 },
+  { word: "fine", meaning: "罰金", day: 4 },
+  { word: "attitude", meaning: "態度", day: 4 },
+  { word: "audience", meaning: "聴衆", day: 4 },
+  { word: "option", meaning: "選択", day: 4 },
+  { word: "raise", meaning: "賃上げ", day: 4 },
+  // Day 5
+  { word: "amount", meaning: "量", day: 5 },
+  { word: "article", meaning: "品物", day: 5 },
+  { word: "fee", meaning: "料金", day: 5 },
+  { word: "attention", meaning: "注意", day: 5 },
+  { word: "detail", meaning: "詳細", day: 5 },
+  { word: "device", meaning: "装置", day: 5 },
+  { word: "item", meaning: "品目", day: 5 },
+  { word: "ladder", meaning: "はしご", day: 5 },
+  { word: "responsibility", meaning: "責任", day: 5 },
+  { word: "shelf", meaning: "棚", day: 5 },
+  { word: "signature", meaning: "署名", day: 5 },
+  { word: "term", meaning: "条件", day: 5 },
+  { word: "crew", meaning: "乗務員", day: 5 },
+  { word: "permission", meaning: "許可", day: 5 },
+  { word: "traffic", meaning: "交通", day: 5 },
+  { word: "access", meaning: "接近", day: 5 },
+  // Day 6
+  { word: "cafeteria", meaning: "食堂", day: 6 },
+  { word: "respect", meaning: "尊敬", day: 6 },
+  { word: "suggestion", meaning: "提案", day: 6 },
+  { word: "method", meaning: "方法", day: 6 },
+  { word: "opening", meaning: "欠員", day: 6 },
+  { word: "account", meaning: "口座", day: 6 },
+  { word: "concern", meaning: "懸念", day: 6 },
+  { word: "performance", meaning: "実績", day: 6 },
+  { word: "agreement", meaning: "契約", day: 6 },
+  { word: "employee", meaning: "従業員", day: 6 },
+  { word: "measure", meaning: "対策", day: 6 },
+  { word: "discount", meaning: "割引", day: 6 },
+  { word: "institution", meaning: "機関", day: 6 },
+  { word: "material", meaning: "材料", day: 6 },
+  { word: "product", meaning: "製品", day: 6 },
+  { word: "stock", meaning: "株", day: 6 },
+  // Day 7
+  { word: "content", meaning: "内容", day: 7 },
+  { word: "interest", meaning: "利息", day: 7 },
+  { word: "broadcast", meaning: "放送", day: 7 },
+  { word: "fountain", meaning: "噴水", day: 7 },
+  { word: "impact", meaning: "影響", day: 7 },
+  { word: "lawn", meaning: "芝生", day: 7 },
+  { word: "medicine", meaning: "薬", day: 7 },
+  { word: "response", meaning: "返答", day: 7 },
+  { word: "study", meaning: "研究", day: 7 },
+  { word: "distance", meaning: "距離", day: 7 },
+  { word: "lack", meaning: "不足", day: 7 },
+  { word: "means", meaning: "手段", day: 7 },
+  { word: "research", meaning: "研究", day: 7 },
+  { word: "box office", meaning: "切符売り場", day: 7 },
+  { word: "career", meaning: "職業", day: 7 },
+  { word: "dentist", meaning: "歯医者", day: 7 }
+];
+
+const TOTAL_QUESTIONS = 10; // 1回あたりの出題数
+let quizQuestions = [];
+let currentQuestionIndex = 0;
+let score = 0;
+
+// クイズの初期化・開始
+function startQuiz() {
+    score = 0;
+    currentQuestionIndex = 0;
+    
+    // マスターデータをシャッフルして10問を抽出
+    const shuffledMaster = [...wordMaster].sort(() => Math.random() - 0.5);
+    quizQuestions = shuffledMaster.slice(0, TOTAL_QUESTIONS);
+    
+    document.getElementById("quiz-screen").style.display = "block";
+    document.getElementById("result-screen").style.display = "none";
+    
+    showQuestion();
+}
+
+// 問題の表示
+function showQuestion() {
+    const currentQuestion = quizQuestions[currentQuestionIndex];
+    
+    // UIのリセット
+    document.getElementById("progress").textContent = `問題 ${currentQuestionIndex + 1} / ${TOTAL_QUESTIONS} (Day ${currentQuestion.day})`;
+    document.getElementById("question-word").textContent = currentQuestion.word;
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("next-button").style.display = "none";
+    
+    // ダミーの選択肢（不正解）を3つランダムに選ぶ（正解の単語は除外）
+    const dummys = wordMaster
+        .filter(item => item.meaning !== currentQuestion.meaning)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(item => item.meaning);
+        
+    // 正解と不正解を混ぜてシャッフル
+    const options = [currentQuestion.meaning, ...dummys].sort(() => Math.random() - 0.5);
+    
+    // 選択肢ボタンの生成
+    const optionsContainer = document.getElementById("options-container");
+    optionsContainer.innerHTML = "";
+    
+    options.forEach((option, index) => {
+        const button = document.createElement("button");
+        button.className = "btn";
+        button.textContent = `${index + 1}. ${option}`;
+        button.onclick = () => checkAnswer(button, option, currentQuestion.meaning);
+        optionsContainer.appendChild(button);
+    });
+}
+
+// 判定処理
+function checkAnswer(selectedButton, selectedValue, correctValue) {
+    const buttons = document.querySelectorAll(".options-grid .btn");
+    
+    // 全ボタンを無効化（2度押し防止）
+    buttons.forEach(btn => btn.disabled = true);
+    
+    if (selectedValue === correctValue) {
+        selectedButton.classList.add("correct");
+        document.getElementById("feedback").textContent = "⭕ 正解！";
+        document.getElementById("feedback").style.color = "#48bb78";
+        score++;
+    } else {
+        selectedButton.classList.add("wrong");
+        document.getElementById("feedback").textContent = `❌ 不正解... 正解は: ${correctValue}`;
+        document.getElementById("feedback").style.color = "#f56565";
+        
+        // 正解のボタンをハイライト
+        buttons.forEach(btn => {
+            if (btn.textContent.includes(correctValue)) {
+                btn.classList.add("correct");
+            }
+        });
+    }
+    
+    document.getElementById("next-button").style.display = "block";
+}
+
+// 次の問題へ、またはリザルト画面へ
+function nextQuestion() {
+    currentQuestionIndex++;
+    if (currentQuestionIndex < TOTAL_QUESTIONS) {
+        showQuestion();
+    } else {
+        // 結果発表
+        document.getElementById("quiz-screen").style.display = "none";
+        document.getElementById("result-screen").style.display = "block";
+        document.getElementById("score").textContent = `${score} / ${TOTAL_QUESTIONS} 問正解`;
+    }
+}
+
+// ページ読み込み時にクイズを開始
+window.onload = startQuiz;
+</script>
+
+</body>
+</html>
